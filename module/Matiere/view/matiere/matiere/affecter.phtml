@@ -1,0 +1,217 @@
+<?php
+$this->headScript()->appendFile('/js/jquery.dataTables.min.js', 'text/javascript');
+$this->headLink()->appendStylesheet('/css/SearchStyle.css'); 
+$this->headLink()->appendStylesheet('/css/jquery.dataTables.min.css');
+$this->headTitle('Softnote- Planifier les matieres');
+$this->mainMenu()->setActiveItemId('configuration');
+$this->pageBreadcrumbs()->setItems([
+            'Accueil'=>$this->url('home'),
+            'Les matières'=>$this->url('matiere'),
+            'Affecter matiere'=>$this->url('matiere', ['action'=>'affecter']),
+            ]);
+
+?>
+
+<h3>Affester des matières a une classe</h3>
+<div class="row">
+      <div class="col-md-8">
+          <form id="configuration_matiere_form" action="#">
+            <p>
+                <label for="classe_select"> Classe: </label>
+                <select name="classe_select" id="classe_select" onchange="jsclasse(this.value);">
+                    <option value="choisir" >Choisir</option>
+                    <?php
+                    foreach ($classes as $classe):
+                       echo '<option value="'.$classe->getId().'">'.$classe->getLibele().'</option>';
+                    endforeach;
+                    ?>
+                </select>
+               
+            </p>
+            <div id="div_classe_data_matiere">
+                
+            </div>
+            
+      <div class="modal-footer" id='submit_parts'>
+       <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+       <button type="submit"  id="submitbutton" class="btn btn-primary" >Enregistrer</button>
+      </div>
+     </form>
+      <form id="affecter_matiere" action="#">
+          <div id="div_matieres_classes">
+             
+          </div>
+      </form>
+ </div>
+    
+   
+</div>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    $('#classe_da').DataTable();
+} );
+
+
+function jsclasse(id_classe)
+{
+       var id_classe = id_classe;
+     
+     if(id_classe > 0){
+         
+           $.ajax({
+            url: '/matiere/afficherMatiereClasse',
+            type: "POST",
+            dataType:"json",
+            data:{classe:id_classe},
+            success: function(data) {
+                
+                var a = $('');
+                  var a = $('<table id="classe_data_matiere" class:"table table-striped table-bordered"><thead><tr><th>Choisir</th><th>Matiere</th><th>Rang</th><th>Coefficient</th></tr></thead><tbody id="book_matieres"></tbody></table>');
+                //var a = $('<tr><th></th><th>Nom</th><th>Prenom</th></tr>');
+                    $('#div_classe_data_matiere').html(''); 
+                    $('#div_classe_data_matiere').append(a);
+                    
+                 for(i = 0; i < data[0].length; i++) { 
+             
+                       book_matieres = data[0][i];
+                        var a = $('<tr><td id = "id"></td><td id = "libele"></td><td id = "rang"></td><td id = "coefficient"></td></tr>'); 
+                         $('#id', a).html('<input type="checkbox"  name="checkmatiere[]" value="'+book_matieres['id']+'"/>'); 
+                         $('#libele', a).html("<a id='"+book_matieres['id']+"' href='#'>"+book_matieres['libele']+"</a>");
+                         $('#rang', a).html(book_matieres['rang']);
+                         $('#coefficient', a).html('<input type="number" step=5 min=0 name="coefficient[]" value=""/>'); 
+                        $('#classe_data_matiere').append(a);  
+                 }
+              jquerytable('classe_data_matiere', 'table table-striped table-bordered');
+              
+              var e = $('');
+                  var e = $('<table id="matieres_classes" class:"table table-striped table-bordered"><thead><tr><th>Choisir</th><th>Matiere</th><th>Rang</th><th>Coefficient</th></tr></thead><tbody id="matieres"></tbody></table>');
+                //var a = $('<tr><th></th><th>Nom</th><th>Prenom</th></tr>');
+                   $('#div_matieres_classes').html(''); 
+                    $('#div_matieres_classes').append(e);
+               for(y = 0; y < data[1].length; y++) { 
+                  
+                matieres = data[1][y];
+                var e = $('<tr><td id = "id"></td><td id = "libele"></td><td id = "rang"></td><td id = "coefficient"></td></tr>'); 
+                $('#id', e).html("<a id='"+matieres['id']+"' href='#' onclick='desaffecter(this.id);' >"+'Desaffecter'+"</a>"); 
+                $('#libele', e).html("<a id='"+matieres['id']+"' href='#'>"+matieres['libele']+"</a>");
+                $('#rang', e).html(matieres['rang']); 
+                $('#coefficient', e).html(matieres['coefficient']); 
+                $('#matieres_classes').append(e); 
+               
+            }
+              jquerytable2('matieres_classes', 'table table-striped table-bordered');
+              
+            //document.getElementById("classe_select").reset();
+            },error : function(jqXHR, textStatus, errorThrown) { 
+           alert('An error occurred... Look at the console (F12 or Ctrl+Shift+I, Console tab) for more information!');
+            $('#resulte').html('<p>Status Code: '+jqXHR.status+'</p><p>ErrorThrown: ' + errorThrown + '</p><p>jqXHR.responseText:</p><div>'+jqXHR.responseText + '</div>');
+            console.log('jqXHR:');console.log(jqXHR);console.log('textStatus:');console.log(textStatus);console.log('errorThrown:');console.log(errorThrown);
+         }
+          
+        });
+        
+  }else{
+     alert('Vous devez choisir la classe');
+  }
+     return false;
+}
+
+$('#submitbutton').on( 'click', function() {
+  // alert('ok');
+          
+           var postData = new Array();
+           var nms= 0;
+           var pd= 0;
+           var id_classe = $('#classe_select').val();
+           var checks_matieres = document.getElementsByName("checkmatiere[]");
+           var coef = document.getElementsByName("coefficient[]");
+           
+            for (var i=0; i < checks_matieres.length; i++) {
+                        nms++;
+                      if(checks_matieres[i].checked == 1 && coef[i].value != ""){
+
+                         for (var y=i; y < nms; y++){
+                               postData[pd] = {
+                                "id_matiere": checks_matieres[i].value, 
+                                "coef": coef[i].value,
+                               };
+                             pd ++;            
+                          }   
+                      }
+                  }
+     if(postData.length > 0){
+       $.ajax({
+            url: '/classe/affecterMatieres',
+            type: "POST",
+            dataType:"json",
+            data:{postData:postData, classe:id_classe},
+            success: function(result) {
+                   alert('Enregistrement reussi');
+                  window.location = window.location.pathname;
+                  //document.getElementById("configuration_matiere_form").reset();
+               
+            },error : function(jqXHR, textStatus, errorThrown) { 
+           alert('An error occurred... Look at the console (F12 or Ctrl+Shift+I, Console tab) for more information!');
+            $('#resulte').html('<p>Status Code: '+jqXHR.status+'</p><p>ErrorThrown: ' + errorThrown + '</p><p>jqXHR.responseText:</p><div>'+jqXHR.responseText + '</div>');
+            console.log('jqXHR:');console.log(jqXHR);console.log('textStatus:');console.log(textStatus);console.log('errorThrown:');console.log(errorThrown);
+         } 
+       });
+       }else{
+       alert('Aucune affectation');
+       }
+      return false; 
+});
+
+
+
+function desaffecter(value){
+    
+    //alert(value);
+    
+     $.ajax({
+            url: '/matiere/desaffecter',
+            type: "POST",
+            dataType:"json",
+            data:{matiere:value},
+            success: function(data) {
+                
+                alert('Reussi');
+               window.location = window.location.pathname;
+            },error : function(jqXHR, textStatus, errorThrown) { 
+           alert('An error occurred... Look at the console (F12 or Ctrl+Shift+I, Console tab) for more information!');
+            $('#resulte').html('<p>Status Code: '+jqXHR.status+'</p><p>ErrorThrown: ' + errorThrown + '</p><p>jqXHR.responseText:</p><div>'+jqXHR.responseText + '</div>');
+            console.log('jqXHR:');console.log(jqXHR);console.log('textStatus:');console.log(textStatus);console.log('errorThrown:');console.log(errorThrown);
+         }
+        });
+        
+       
+}
+
+
+
+function jquerytable(id_table, class_table){
+$(document).ready(function() {
+    $('#'+id_table+'').DataTable();
+    $("#div_classe_data_matiere table").addClass(''+class_table+'');
+});
+}
+
+function jquerytable2(id_table, class_table){
+$(document).ready(function() {
+    $('#'+id_table+'').DataTable();
+    $("#div_matieres_classes table").addClass(''+class_table+'');
+});
+}
+
+</script>
+
+
+
+<style>
+    
+</style>
+<html></html> 
+<html></html> 
+<html></html> 
+<html></html> 
